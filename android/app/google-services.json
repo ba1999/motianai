@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "766437310842",
+    "project_id": "motionai-967e8",
+    "storage_bucket": "motionai-967e8.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:766437310842:android:6babdc3d748ec79f3bd6c3",
+        "android_client_info": {
+          "package_name": "com.example.motionai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCAh7ajJha4caQr_9Itu99SRhlsbkRcKg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
