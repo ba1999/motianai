@@ -10,15 +10,18 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // Instance of BleManager for managing BLE operations.
   BleManager bleManager = BleManager();
 
   @override
   void initState() {
     super.initState();
-    bleManager.loadAI();
+    bleManager.loadAI(); // Load the AI model on initialization.
 
+    // Set up a callback for when the BLE device is connected.
     bleManager.onDeviceConnected = () {
       if (bleManager.isConnected) {
+        // Navigate to the TrainingPage when a device is successfully connected.
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -29,7 +32,9 @@ class _HomePageState extends State<HomePage> {
       }
     };
 
+    // Set up a callback for when no BLE device is found.
     bleManager.onNoDeviceFound = () {
+      // Show an alert dialog if no BLE device is found.
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -51,6 +56,7 @@ class _HomePageState extends State<HomePage> {
     };
   }
 
+  // Function to show a loading dialog while connecting to a device.
   void showLoadingDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -77,6 +83,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.onPrimary,
+      // Appbar
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -87,12 +94,14 @@ class _HomePageState extends State<HomePage> {
               fontWeight: FontWeight.bold),
         ),
       ),
+      // Body
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
+              // Image - Home
               Image.asset(
                 'assets/home.png',
                 height: 250,
@@ -100,6 +109,7 @@ class _HomePageState extends State<HomePage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Text - Wellcome to MotionAI
                   Text(
                     "Wilkommen bei MotionAI",
                     style: TextStyle(
@@ -110,23 +120,20 @@ class _HomePageState extends State<HomePage> {
                   SizedBox(
                     height: 16,
                   ),
+                  // Text - Information
                   Text(
                     "MotionAI ist eine Künstliche Intelligenz die Ihre Bewegung anhand von Wearables Tracken kann! Um Fortzufahren Verbinden Sie die App mit Ihrem Wearable.",
                   ),
                 ],
               ),
+              // Button - Search for BLE devices
               FilledButton(
                   onPressed: () {
                     if (!bleManager.isSearching) {
-                      bleManager.scanForDevices();
+                      bleManager
+                          .scanForDevices(); // Start scanning for devices on button press.
                       bleManager.isSearching = true;
                     }
-                    /* Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => TrainingPage(
-                                  bleManager: bleManager,
-                                )));*/
                   },
                   child: Text("Verbinden"))
             ],

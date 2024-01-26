@@ -5,6 +5,7 @@ import 'package:motionai/pages/home_page.dart';
 import '../ble_manager.dart';
 
 class ResultPage extends StatefulWidget {
+  // Instance of BleManager for managing BLE operations.
   final BleManager bleManager;
   ResultPage({Key? key, required this.bleManager}) : super(key: key);
 
@@ -17,6 +18,7 @@ class _ResultPageState extends State<ResultPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.onPrimary,
+      // Appbar
       appBar: AppBar(
           automaticallyImplyLeading: false,
           backgroundColor: Theme.of(context).colorScheme.primary,
@@ -26,6 +28,7 @@ class _ResultPageState extends State<ResultPage> {
                 color: Theme.of(context).colorScheme.onPrimary,
                 fontWeight: FontWeight.bold),
           ),
+          // Iconbutton - Information
           actions: [
             IconButton(
               icon: Icon(
@@ -33,6 +36,7 @@ class _ResultPageState extends State<ResultPage> {
                 color: Theme.of(context).colorScheme.onPrimary,
               ),
               onPressed: () {
+                // Show a dialog with information about different motion types.
                 showDialog(
                   context: context,
                   builder: (BuildContext context) {
@@ -66,7 +70,7 @@ class _ResultPageState extends State<ResultPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     Expanded(
-                      // Wrap the first card in an Expanded widget
+                      // Card - Information for Threshold
                       child: Card(
                         color: Theme.of(context).colorScheme.primaryContainer,
                         shape: RoundedRectangleBorder(
@@ -75,7 +79,6 @@ class _ResultPageState extends State<ResultPage> {
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
-                            //crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 "Schwellenwert",
@@ -87,6 +90,7 @@ class _ResultPageState extends State<ResultPage> {
                                         .onPrimaryContainer),
                               ),
                               SizedBox(height: 8),
+                              // Piechart Threshold
                               Container(
                                 height: 150,
                                 child: PieChart(
@@ -177,7 +181,7 @@ class _ResultPageState extends State<ResultPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     Expanded(
-                      // Wrap the first card in an Expanded widget
+                      // Card - Information for AI
                       child: Card(
                         color: Theme.of(context).colorScheme.primaryContainer,
                         shape: RoundedRectangleBorder(
@@ -186,7 +190,6 @@ class _ResultPageState extends State<ResultPage> {
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
-                            //crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 "KI Analyse",
@@ -198,6 +201,7 @@ class _ResultPageState extends State<ResultPage> {
                                         .onPrimaryContainer),
                               ),
                               SizedBox(height: 16),
+                              // Piechart AI
                               Container(
                                 height: 150,
                                 child: PieChart(
@@ -307,7 +311,7 @@ class _ResultPageState extends State<ResultPage> {
                       ),
                     ),
                     Expanded(
-                      // Wrap the first card in an Expanded widget
+                      // Card - Information for AI Firebase
                       child: Card(
                         color: Theme.of(context).colorScheme.primaryContainer,
                         shape: RoundedRectangleBorder(
@@ -316,7 +320,6 @@ class _ResultPageState extends State<ResultPage> {
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
-                            //crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 "KI Firebase",
@@ -328,6 +331,7 @@ class _ResultPageState extends State<ResultPage> {
                                         .onPrimaryContainer),
                               ),
                               SizedBox(height: 16),
+                              // Piechart AI Firebase
                               Container(
                                 height: 150,
                                 child: PieChart(
@@ -440,8 +444,10 @@ class _ResultPageState extends State<ResultPage> {
                   ],
                 ),
                 SizedBox(height: 32),
+                // Button - Change page to home
                 FilledButton(
                     onPressed: () {
+                      // Navigate to the HomePage when the button is pressed.
                       Navigator.push(
                         context,
                         MaterialPageRoute(

@@ -8,6 +8,7 @@ import 'package:motionai/pages/result_page.dart';
 import 'package:wakelock/wakelock.dart';
 
 class TrainingPage extends StatefulWidget {
+  // Instance of BleManager for managing BLE operations.
   final BleManager bleManager;
 
   TrainingPage({Key? key, required this.bleManager}) : super(key: key);
@@ -17,14 +18,19 @@ class TrainingPage extends StatefulWidget {
 }
 
 class _TrainingPageState extends State<TrainingPage> {
+  // Lists for storing minimum and maximum sensor value notifiers.
   final List notifierMIN = [];
   final List notifierMAX = [];
+  // Titles for sensor data display.
+  final List _titles = ['AcX', 'AcY', 'AcZ', 'GyX', 'GyY', 'GyZ'];
 
   @override
   void initState() {
     super.initState();
+    // Keep the device awake during training.
     Wakelock.enable();
-    // Setzen des Callbacks für Gerätetrennung
+
+    // Callback when the BLE device is disconnected. Navigate to ResultPage.
     widget.bleManager.onDeviceDisconnected = () {
       widget.bleManager.isConnected = false;
       Navigator.push(
@@ -36,12 +42,13 @@ class _TrainingPageState extends State<TrainingPage> {
       );
     };
 
-    // Starten Sie die Überwachung der Geräteverbindung
+    // Start monitoring device connection and handle characteristic setting.
     widget.bleManager.monitorDeviceConnection();
     widget.bleManager.onCharacteristicSet = () {
-      setState(() {}); // Rebuild the widget when the characteristic is set
+      setState(() {});
     };
 
+    // Listener for loading data state.
     widget.bleManager.loadingData.addListener(() {
       final isLoading = widget.bleManager.loadingData.value;
       if (isLoading) {
@@ -53,17 +60,18 @@ class _TrainingPageState extends State<TrainingPage> {
       }
     });
 
+    // Error handling callback.
     widget.bleManager.onError = () {
       _showErrorDialog();
     };
 
+    // Setup minimum and maximum value notifiers for sensor data.
     notifierMIN.add(widget.bleManager.minxNotifier);
     notifierMIN.add(widget.bleManager.minyNotifier);
     notifierMIN.add(widget.bleManager.minzNotifier);
     notifierMIN.add(widget.bleManager.mingxNotifier);
     notifierMIN.add(widget.bleManager.mingyNotifier);
     notifierMIN.add(widget.bleManager.mingzNotifier);
-
     notifierMAX.add(widget.bleManager.maxxNotifier);
     notifierMAX.add(widget.bleManager.maxyNotifier);
     notifierMAX.add(widget.bleManager.maxzNotifier);
@@ -74,6 +82,7 @@ class _TrainingPageState extends State<TrainingPage> {
 
   @override
   void dispose() {
+    // Perform cleanup and disable wakelock.
     Wakelock.disable();
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -84,6 +93,7 @@ class _TrainingPageState extends State<TrainingPage> {
     super.dispose();
   }
 
+  // Function to show an error dialog.
   void _showErrorDialog() {
     showDialog(
       context: context,
@@ -97,7 +107,7 @@ class _TrainingPageState extends State<TrainingPage> {
             TextButton(
               child: Text('OK'),
               onPressed: () {
-                Navigator.of(context).pop(); // Schließt den Dialog
+                Navigator.of(context).pop(); // close dialog
               },
             ),
           ],
@@ -106,6 +116,7 @@ class _TrainingPageState extends State<TrainingPage> {
     );
   }
 
+  // Function to show a dialog when no BLE device is found.
   void _showNoBLEDialog() {
     showDialog(
       context: context,
@@ -118,7 +129,7 @@ class _TrainingPageState extends State<TrainingPage> {
             TextButton(
               child: Text('OK'),
               onPressed: () {
-                Navigator.of(context).pop(); // Schließt den Dialog
+                Navigator.of(context).pop(); // close dialog
               },
             ),
           ],
@@ -127,11 +138,11 @@ class _TrainingPageState extends State<TrainingPage> {
     );
   }
 
+  // Function to show a loading dialog.
   void _showLoadingDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierDismissible:
-          false, // Benutzer kann den Dialog nicht manuell schließen
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return Dialog(
           child: Padding(
@@ -150,12 +161,11 @@ class _TrainingPageState extends State<TrainingPage> {
     );
   }
 
-  final List _titles = ['AcX', 'AcY', 'AcZ', 'GyX', 'GyY', 'GyZ'];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: Theme.of(context).colorScheme.onPrimary,
+        // Appbar
         appBar: AppBar(
           automaticallyImplyLeading: false,
           backgroundColor: Theme.of(context).colorScheme.primary,
@@ -165,6 +175,7 @@ class _TrainingPageState extends State<TrainingPage> {
                 color: Theme.of(context).colorScheme.onPrimary,
                 fontWeight: FontWeight.bold),
           ),
+          // Iconbutton - Finish workout
           actions: [
             IconButton(
                 onPressed: () {
@@ -188,7 +199,8 @@ class _TrainingPageState extends State<TrainingPage> {
         ),
         body: widget.bleManager.isLoading
             ? Center(
-                child: CircularProgressIndicator()) // Show loading animation
+                child: CircularProgressIndicator()) // Show loading animation.
+            // Main content of the page with real-time data visualization.
             : SingleChildScrollView(
                 child: Center(
                   child: Padding(
@@ -202,7 +214,7 @@ class _TrainingPageState extends State<TrainingPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
                             Expanded(
-                              // Wrap the first card in an Expanded widget
+                              // Card - Result AI
                               child: Card(
                                 color: Theme.of(context)
                                     .colorScheme
@@ -261,10 +273,9 @@ class _TrainingPageState extends State<TrainingPage> {
                                 ),
                               ),
                             ),
-                            SizedBox(
-                                width: 4), // Optional spacing between the cards
+                            SizedBox(width: 4),
                             Expanded(
-                              // Wrap the second card in an Expanded widget
+                              // Card - Result Threshold
                               child: Card(
                                 color: Theme.of(context)
                                     .colorScheme
@@ -314,7 +325,7 @@ class _TrainingPageState extends State<TrainingPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
                             Expanded(
-                              // Wrap the first card in an Expanded widget
+                              // Card - Result AI Firebase
                               child: Card(
                                 color: Theme.of(context)
                                     .colorScheme
@@ -378,6 +389,7 @@ class _TrainingPageState extends State<TrainingPage> {
                         SizedBox(
                           height: 16,
                         ),
+                        // Listview - Min and Max values
                         Container(
                           height: 110,
                           child: ListView(
@@ -387,8 +399,7 @@ class _TrainingPageState extends State<TrainingPage> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 4.0, vertical: 8),
                                 child: Material(
-                                  elevation:
-                                      1.0, // Set the elevation value here
+                                  elevation: 1.0,
                                   borderRadius: BorderRadius.circular(15.0),
                                   child: Container(
                                     height: 75,
@@ -537,6 +548,7 @@ class _TrainingPageState extends State<TrainingPage> {
                             ],
                           ),
                         ),
+                        // Linechart - Values Acceleration
                         ValueListenableBuilder<List<double>>(
                             valueListenable: widget.bleManager.receivedValuesAX,
                             builder: (context, receivedValues, child) {
@@ -549,48 +561,24 @@ class _TrainingPageState extends State<TrainingPage> {
                                     LineChartData(
                                       titlesData: FlTitlesData(
                                         leftTitles: SideTitles(
-                                          showTitles:
-                                              false, // Hide Y-axis number scale
+                                          showTitles: false,
                                         ),
                                         topTitles: SideTitles(
-                                          showTitles:
-                                              false, // Hide X-axis labels
+                                          showTitles: false,
                                         ),
                                         rightTitles: SideTitles(
-                                          showTitles:
-                                              false, // Hide X-axis labels
+                                          showTitles: false,
                                         ),
-                                        bottomTitles: SideTitles(
-                                            /* showTitles: true,
-                              getTitles: (value) {
-                                switch (value.toInt()) {
-                                   case 0:
-                                  return 'Mon';
-                                case 2:
-                                  return 'Tue';
-                                case 4:
-                                  return 'Wed';
-                                case 6:
-                                  return 'Thu';
-                                case 8:
-                                  return 'Fri';
-                                case 10:
-                                  return 'Sat';
-                                case 12:
-                                  return 'Sun';
-                              }
-                                return '';
-                              },*/
-                                            ),
+                                        bottomTitles: SideTitles(),
                                       ),
                                       gridData: FlGridData(
-                                        show: false, // Hide grid lines
+                                        show: false,
                                       ),
                                       borderData: FlBorderData(
-                                        show: false, // Hide borders
+                                        show: false,
                                       ),
                                       minX: 0,
-                                      maxX: 100, // Adjust the maximum X value
+                                      maxX: 100,
                                       minY: -4,
                                       maxY: 4,
                                       lineBarsData: [
@@ -690,6 +678,7 @@ class _TrainingPageState extends State<TrainingPage> {
                             ],
                           ),
                         ),
+                        // Linechart - Values Gyro
                         ValueListenableBuilder<List<double>>(
                             valueListenable: widget.bleManager.receivedValuesAX,
                             builder: (context, receivedValues, child) {
@@ -702,48 +691,24 @@ class _TrainingPageState extends State<TrainingPage> {
                                     LineChartData(
                                       titlesData: FlTitlesData(
                                         leftTitles: SideTitles(
-                                          showTitles:
-                                              false, // Hide Y-axis number scale
+                                          showTitles: false,
                                         ),
                                         topTitles: SideTitles(
-                                          showTitles:
-                                              false, // Hide X-axis labels
+                                          showTitles: false,
                                         ),
                                         rightTitles: SideTitles(
-                                          showTitles:
-                                              false, // Hide X-axis labels
+                                          showTitles: false,
                                         ),
-                                        bottomTitles: SideTitles(
-                                            /* showTitles: true,
-                              getTitles: (value) {
-                                switch (value.toInt()) {
-                                   case 0:
-                                  return 'Mon';
-                                case 2:
-                                  return 'Tue';
-                                case 4:
-                                  return 'Wed';
-                                case 6:
-                                  return 'Thu';
-                                case 8:
-                                  return 'Fri';
-                                case 10:
-                                  return 'Sat';
-                                case 12:
-                                  return 'Sun';
-                              }
-                                return '';
-                              },*/
-                                            ),
+                                        bottomTitles: SideTitles(),
                                       ),
                                       gridData: FlGridData(
-                                        show: false, // Hide grid lines
+                                        show: false,
                                       ),
                                       borderData: FlBorderData(
-                                        show: false, // Hide borders
+                                        show: false,
                                       ),
                                       minX: 0,
-                                      maxX: 100, // Adjust the maximum X value
+                                      maxX: 100,
                                       minY: -2000,
                                       maxY: 2000,
                                       lineBarsData: [
@@ -804,26 +769,6 @@ class _TrainingPageState extends State<TrainingPage> {
                         SizedBox(
                           height: 32,
                         ),
-                        /* Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            FilledButton(
-                                onPressed: () {
-                                  widget.bleManager.isConnected = false;
-                                  widget.bleManager.disconnectFromDevice();
-                                  Future.delayed(Duration(milliseconds: 100));
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => ResultPage(
-                                          bleManager: widget.bleManager),
-                                      fullscreenDialog: true,
-                                    ),
-                                  );
-                                },
-                                child: Text("Beenden")),
-                          ],
-                        ),*/
                         SizedBox(
                           height: 16,
                         ),

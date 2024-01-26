@@ -12,12 +12,34 @@ class BleManager {
   bool isConnected = false;
   bool isLoading = true;
   bool isSearching = false;
-  Function? onCharacteristicSet;
-  Function? onDeviceConnected;
-  FlutterBlue flutterBlue = FlutterBlue.instance;
-  late BluetoothDevice _selectedDevice;
-  BluetoothCharacteristic? _customCharacteristic;
+  int motionKIcounter0 = 0;
+  int motionKIcounter1 = 0;
+  int motionKIcounter2 = 0;
+  int motionKIcounter3 = 0;
+  int motionThreadcounter0 = 0;
+  int motionThreadcounter1 = 0;
+  int motionThreadcounter2 = 0;
+  int motionThreadcounter3 = 0;
+  int motionFirecounter0 = 0;
+  int motionFirecounter1 = 0;
+  int motionFirecounter2 = 0;
+  int motionFirecounter3 = 0;
+  int confidenceKI = 0;
+  int confidenceFirebase = 0;
+  int confidenceKISum = 0;
+  int confidenceFirebaseSum = 0;
+  int confidenceKICounter = 0;
+  int confidenceFirebaseCounter = 0;
+  int packetCountX = 0;
+  int packetCountY = 0;
+  int packetCountZ = 0;
+  int packetCountGX = 0;
+  int packetCountGY = 0;
+  int packetCountGZ = 0;
+  int end = 0;
   int counter = 0;
+
+// Lists to hold received sensor values
   List<double> receivedValuesX = [];
   List<double> receivedValuesY = [];
   List<double> receivedValuesZ = [];
@@ -25,8 +47,18 @@ class BleManager {
   List<double> receivedValuesGY = [];
   List<double> receivedValuesGZ = [];
   List<double> receivedValues = [];
-  late Interpreter interpreter;
+  // Constants for data scaling
+  final List<double> means = [0.9786, 0.0745, 0.3037, -4.1858, 2.4569, 0.6723];
+  final List<double> stdDevs = [
+    0.67618344,
+    0.43351903,
+    0.30864431,
+    56.92824807,
+    24.40493039,
+    19.50881415
+  ];
 
+// Notifiers to update UI components
   final ValueNotifier<bool> loadingData = ValueNotifier<bool>(false);
   final ValueNotifier<String> motionNotifierKI = ValueNotifier<String>("-");
   final ValueNotifier<String> motionNotifierThread = ValueNotifier<String>("-");
@@ -46,48 +78,108 @@ class BleManager {
   final ValueNotifier<double> maxgxNotifier = ValueNotifier<double>(0.0);
   final ValueNotifier<double> maxgyNotifier = ValueNotifier<double>(0.0);
   final ValueNotifier<double> maxgzNotifier = ValueNotifier<double>(0.0);
+  ValueNotifier<List<double>> receivedValuesAX = ValueNotifier([]);
+  ValueNotifier<List<double>> receivedValuesAY = ValueNotifier([]);
+  ValueNotifier<List<double>> receivedValuesAYZ = ValueNotifier([]);
 
-  int motionKIcounter0 = 0;
-  int motionKIcounter1 = 0;
-  int motionKIcounter2 = 0;
-  int motionKIcounter3 = 0;
-  int motionThreadcounter0 = 0;
-  int motionThreadcounter1 = 0;
-  int motionThreadcounter2 = 0;
-  int motionThreadcounter3 = 0;
-  int motionFirecounter0 = 0;
-  int motionFirecounter1 = 0;
-  int motionFirecounter2 = 0;
-  int motionFirecounter3 = 0;
-  int confidenceKI = 0;
-  int confidenceFirebase = 0;
-  int confidenceKISum = 0;
-  int confidenceFirebaseSum = 0;
-  int confidenceKICounter = 0;
-  int confidenceFirebaseCounter = 0;
+// BLE specific UUIDs
+  final Guid customServiceUuid = Guid("0000FFE0-0000-1000-8000-00805F9B34FB");
+  final Guid customCharacteristicUuid =
+      Guid("0000FFE1-0000-1000-8000-00805F9B34FB");
 
-  int packetCountX = 0;
-  int packetCountY = 0;
-  int packetCountZ = 0;
-  int packetCountGX = 0;
-  int packetCountGY = 0;
-  int packetCountGZ = 0;
-  int end = 0;
+  StreamSubscription<List<int>>? _notificationSubscription;
 
-  final List<double> means = [0.9786, 0.0745, 0.3037, -4.1858, 2.4569, 0.6723];
-  final List<double> stdDevs = [
-    0.67618344,
-    0.43351903,
-    0.30864431,
-    56.92824807,
-    24.40493039,
-    19.50881415
-  ];
+  Timer? _scanTimer;
+  bool _deviceFound = false;
 
-  Function()? onError;
+  late Interpreter interpreter; // TensorFlow Lite interpreter for ML model.
+  FlutterBlue flutterBlue =
+      FlutterBlue.instance; // Instance of FlutterBlue for BLE operations.
+  late BluetoothDevice
+      _selectedDevice; // The selected BLE device and its characteristics.
+  BluetoothCharacteristic? _customCharacteristic;
 
-  Function? onDeviceDisconnected; // Callback für Gerätetrennung
+// Callback functions for various BLE events
+  Function()? onError; // Callback for Error
+  Function? onCharacteristicSet; // Callback for device Characteristics is set
+  Function? onDeviceConnected; // Callback for device connected
+  Function? onDeviceDisconnected; // Callback for device disconnected
+  Function? onNoDeviceFound; // Callback for no device found
 
+// Function to scale sensor data
+  List<double> scaleData(List<double> rawData) {
+    List<double> scaledData = List.generate(rawData.length, (index) {
+      int featureIndex = index % 6;
+      return (rawData[index] - means[featureIndex]) / stdDevs[featureIndex];
+    });
+    return scaledData;
+  }
+
+// Functions to update received values from different axes
+  void updateReceivedValuesX(List<double> newValues) {
+    receivedValuesX.addAll(newValues); // Add received values to List
+  }
+
+  void updateReceivedValuesY(List<double> newValues) {
+    receivedValuesY.addAll(newValues); // Add received values to List
+  }
+
+  void updateReceivedValuesZ(List<double> newValues) {
+    receivedValuesZ.addAll(newValues); // Add received values to List
+  }
+
+  void updateReceivedValuesGX(List<double> newValues) {
+    receivedValuesGX.addAll(newValues); // Add received values to List
+  }
+
+  void updateReceivedValuesGY(List<double> newValues) {
+    receivedValuesGY.addAll(newValues); // Add received values to List
+  }
+
+  void updateReceivedValuesGZ(List<double> newValues) {
+    receivedValuesGZ.addAll(newValues); // Add received values to List
+    receivedValuesAX.value = List.from(receivedValuesGZ);
+  }
+
+  // Function to scan for BLE devices
+  void scanForDevices() {
+    _deviceFound = false;
+    flutterBlue.startScan(timeout: Duration(seconds: 2)); // Start BLE scan
+
+    _scanTimer = Timer(Duration(seconds: 2), () {
+      if (!_deviceFound) {
+        flutterBlue.stopScan();
+        isSearching = false;
+        onNoDeviceFound?.call();
+      }
+    });
+
+    // Scanning for BLE devices and handling the connection process
+    flutterBlue.scanResults.listen((List<ScanResult> results) {
+      for (ScanResult result in results) {
+        if (result.device.name == "MotionAI") {
+          _deviceFound = true;
+          _scanTimer?.cancel();
+          flutterBlue.stopScan();
+          isSearching = false;
+          connectToDevice(result.device);
+          break;
+        }
+      }
+    });
+  }
+
+// Function to set and handle custom characteristic for BLE communication
+  set customCharacteristic(BluetoothCharacteristic? value) {
+    _customCharacteristic = value;
+    if (_customCharacteristic != null) {
+      isLoading = false;
+      onCharacteristicSet?.call();
+      setCharacteristicNotifications();
+    }
+  }
+
+// Function to monitor BLE device connection
   Future<void> monitorDeviceConnection() async {
     _selectedDevice.state.listen((state) {
       if (state == BluetoothDeviceState.disconnected) {
@@ -98,64 +190,7 @@ class BleManager {
     });
   }
 
-  List<double> scaleData(List<double> rawData) {
-    List<double> scaledData = List.generate(rawData.length, (index) {
-      int featureIndex = index % 6;
-      return (rawData[index] - means[featureIndex]) / stdDevs[featureIndex];
-    });
-    return scaledData;
-  }
-
-  ValueNotifier<List<double>> receivedValuesAX = ValueNotifier([]);
-  ValueNotifier<List<double>> receivedValuesAY = ValueNotifier([]);
-  ValueNotifier<List<double>> receivedValuesAYZ = ValueNotifier([]);
-
-  final Guid customServiceUuid = Guid("0000FFE0-0000-1000-8000-00805F9B34FB");
-  final Guid customCharacteristicUuid =
-      Guid("0000FFE1-0000-1000-8000-00805F9B34FB");
-
-  StreamSubscription<List<int>>? _notificationSubscription;
-
-  Timer? _scanTimer;
-  bool _deviceFound = false;
-  Function? onNoDeviceFound; // Callback for no device found
-
-  void scanForDevices() {
-    _deviceFound = false;
-    flutterBlue.startScan(timeout: Duration(seconds: 2));
-
-    // Start a timer for 3 seconds
-    _scanTimer = Timer(Duration(seconds: 2), () {
-      if (!_deviceFound) {
-        flutterBlue.stopScan();
-        isSearching = false;
-        onNoDeviceFound?.call(); // Trigger the callback if no device found
-      }
-    });
-
-    flutterBlue.scanResults.listen((List<ScanResult> results) {
-      for (ScanResult result in results) {
-        if (result.device.name == "MotionAI") {
-          _deviceFound = true;
-          _scanTimer?.cancel(); // Cancel the timer
-          flutterBlue.stopScan();
-          isSearching = false;
-          connectToDevice(result.device);
-          break;
-        }
-      }
-    });
-  }
-
-  set customCharacteristic(BluetoothCharacteristic? value) {
-    _customCharacteristic = value;
-    if (_customCharacteristic != null) {
-      isLoading = false;
-      onCharacteristicSet?.call();
-      setCharacteristicNotifications();
-    }
-  }
-
+  // Function to load the AI model from Firebase
   Future<void> loadAI() async {
     FirebaseCustomModel model = await FirebaseModelDownloader.instance.getModel(
         "motionai",
@@ -172,21 +207,18 @@ class BleManager {
     //interpreter = await Interpreter.fromAsset('assets/models/ki_modell.tflite');
   }
 
+// Function to connect to a specific BLE device
   Future<void> connectToDevice(BluetoothDevice device) async {
     try {
       _selectedDevice = device;
       await _selectedDevice.connect().then((value) async {
-        receivedValuesX =
-            List<double>.generate(100, (index) => 0.0); // 100 zeros
-        receivedValuesY =
-            List<double>.generate(100, (index) => -0.2); // 100 -1s
+        receivedValuesX = List<double>.generate(100, (index) => 0.0);
+        receivedValuesY = List<double>.generate(100, (index) => -0.2);
         receivedValuesZ = List<double>.generate(100, (index) => 0.2);
-        receivedValuesGX =
-            List<double>.generate(100, (index) => 0.0); // 100 zeros
-        receivedValuesGY =
-            List<double>.generate(100, (index) => -200.0); // 100 -1s
+        receivedValuesGX = List<double>.generate(100, (index) => 0.0);
+        receivedValuesGY = List<double>.generate(100, (index) => -200.0);
         receivedValuesGZ = List<double>.generate(100, (index) => 200);
-        // Finde die benutzerdefinierte Charakteristik im Service
+
         isConnected = true;
         onDeviceConnected?.call();
         // loadAI();
@@ -209,6 +241,7 @@ class BleManager {
     }
   }
 
+  // Function to disconnect from the BLE device
   Future<void> disconnectFromDevice() async {
     if (_selectedDevice != null) {
       await _selectedDevice.disconnect().then((value) async {
@@ -217,7 +250,6 @@ class BleManager {
         _customCharacteristic = null;
         isLoading = true;
 
-        // Variablen zurücksetzen
         counter = 0;
         receivedValuesX.clear();
         receivedValuesY.clear();
@@ -233,6 +265,7 @@ class BleManager {
     }
   }
 
+// Function to send JSON data to the BLE device
   Future<void> sendJsonData(Map<String, dynamic> jsonData) async {
     try {
       if (_customCharacteristic != null) {
@@ -248,59 +281,27 @@ class BleManager {
     }
   }
 
-  void updateReceivedValuesX(List<double> newValues) {
-    // Fügen Sie die neuen Werte hinzu
-    receivedValuesX.addAll(newValues);
-  }
-
-  void updateReceivedValuesY(List<double> newValues) {
-    // Fügen Sie die neuen Werte hinzu
-    receivedValuesY.addAll(newValues);
-  }
-
-  void updateReceivedValuesZ(List<double> newValues) {
-    // Fügen Sie die neuen Werte hinzu
-    receivedValuesZ.addAll(newValues);
-  }
-
-  void updateReceivedValuesGX(List<double> newValues) {
-    // Fügen Sie die neuen Werte hinzu
-    receivedValuesGX.addAll(newValues);
-  }
-
-  void updateReceivedValuesGY(List<double> newValues) {
-    // Fügen Sie die neuen Werte hinzu
-    receivedValuesGY.addAll(newValues);
-  }
-
-  void updateReceivedValuesGZ(List<double> newValues) {
-    // Fügen Sie die neuen Werte hinzu
-    receivedValuesGZ.addAll(newValues);
-    receivedValuesAX.value = List.from(receivedValuesGZ);
-  }
-
+// Function to handle notifications from the BLE characteristic
   Future<void> setCharacteristicNotifications() async {
     try {
       if (_selectedDevice != null && _customCharacteristic != null) {
-        await _customCharacteristic!.setNotifyValue(true);
-        await _selectedDevice.requestMtu(512);
+        await _customCharacteristic!.setNotifyValue(
+            true); // Enable notifications for the custom characteristic.
+        await _selectedDevice.requestMtu(
+            512); // Request to set the Maximum Transmission Unit (MTU) size to 512 bytes.
 
+        // Subscribe to the characteristic's value changes.
         _notificationSubscription = _customCharacteristic!.value.listen((data) {
-          String receivedData = String.fromCharCodes(data);
+          String receivedData = String.fromCharCodes(
+              data); // Convert the incoming data to a string.
           print('Received data: $receivedData');
 
-          print(counter.toString());
           try {
-            Map<String, dynamic> jsonData = jsonDecode(receivedData);
+            Map<String, dynamic> jsonData = jsonDecode(
+                receivedData); // Decode the received data from JSON format.
 
-            // Extracting the data
-            /*  double acx = sensorData['ACX'];
-          double acy = sensorData['ACY'];
-          double acz = sensorData['ACZ'];
-          double gyx = sensorData['GYX'];
-          double gyy = sensorData['GYY'];
-          double gyz = sensorData['GYZ'];*/
-
+            // Check if the JSON data contains the 'KI' key.
+            // Processing and updating motion and confidence data based on 'KI', 'THREAD', and 'CONF'
             if (jsonData.containsKey('KI')) {
               loadingData.value = true;
               int ki = jsonData['KI'];
@@ -326,8 +327,7 @@ class BleManager {
                     motionNotifierKI.value = "Laufen A";
                     break;
                   default:
-                    motionNotifierKI.value =
-                        "-"; // Default case if ki is neither 0 nor 1
+                    motionNotifierKI.value = "-";
                     break;
                 }
                 confidenceNotifierKI.value = confidence;
@@ -357,13 +357,9 @@ class BleManager {
                   motionNotifierThread.value = "Laufen A";
                   break;
                 default:
-                  motionNotifierThread.value =
-                      "-"; // Default case if ki is neither 0 nor 1
+                  motionNotifierThread.value = "-";
                   break;
               }
-
-              // motionNotifier1.value = ki;
-              // motionNotifier2.value = schwelle;
 
               receivedValuesX.clear();
               receivedValuesY.clear();
@@ -371,10 +367,9 @@ class BleManager {
               receivedValuesGX.clear();
               receivedValuesGY.clear();
               receivedValuesGZ.clear();
-
-              // Sie könnten hier eine Benachrichtigung senden, um das Diagramm zu aktualisieren
             }
 
+            // Check if the JSON data contains the 'MINX' key.
             if (jsonData.containsKey('MINX')) {
               minxNotifier.value =
                   ((jsonData['MINX']).toDouble() * 100).round() / 100;
@@ -390,6 +385,7 @@ class BleManager {
                   ((jsonData['MAXZ']).toDouble() * 100).round() / 100;
             }
 
+            // Check if the JSON data contains the 'MINGX' key.
             if (jsonData.containsKey('MINGX')) {
               mingxNotifier.value =
                   ((jsonData['MINGX']).toDouble() * 100).round() / 100;
@@ -405,6 +401,7 @@ class BleManager {
                   ((jsonData['MAXGZ']).toDouble() * 100).round() / 100;
             }
 
+            // Check if the JSON data contains the 'AX' key.
             if (jsonData.containsKey('AX')) {
               packetCountX++;
               if (end == 1) {
@@ -416,92 +413,76 @@ class BleManager {
                 receivedValuesGZ.clear();
                 end = 0;
               }
-
               List<dynamic> values = jsonData['AX'];
-              //receivedValues.addAll(values.cast<double>());
               updateReceivedValuesX(values.cast<double>());
-
-              // Sie könnten hier eine Benachrichtigung senden, um das Diagramm zu aktualisieren
             }
+
+            // Check if the JSON data contains the 'AY' key.
             if (jsonData.containsKey('AY')) {
               packetCountY++;
               if (end == 1) {
                 receivedValuesY.clear();
                 end = 0;
               }
-
               List<dynamic> values = jsonData['AY'];
-              //receivedValues.addAll(values.cast<double>());
               updateReceivedValuesY(values.cast<double>());
-
-              // Sie könnten hier eine Benachrichtigung senden, um das Diagramm zu aktualisieren
             }
+
+            // Check if the JSON data contains the 'AZ' key.
             if (jsonData.containsKey('AZ')) {
               packetCountZ++;
               if (end == 1) {
                 receivedValuesZ.clear();
                 end = 0;
               }
-
               List<dynamic> values = jsonData['AZ'];
-              //receivedValues.addAll(values.cast<double>());
               updateReceivedValuesZ(values.cast<double>());
-
-              // Sie könnten hier eine Benachrichtigung senden, um das Diagramm zu aktualisieren
             }
+
+            // Check if the JSON data contains the 'GX' key.
             if (jsonData.containsKey('GX')) {
               packetCountGX++;
               if (end == 1) {
                 receivedValuesGX.clear();
                 end = 0;
               }
-
               List<dynamic> values = jsonData['GX'];
-              //receivedValues.addAll(values.cast<double>());
               updateReceivedValuesGX(values.cast<double>());
-
-              // Sie könnten hier eine Benachrichtigung senden, um das Diagramm zu aktualisieren
             }
+
+            // Check if the JSON data contains the 'GY' key.
             if (jsonData.containsKey('GY')) {
               packetCountGY++;
               if (end == 1) {
                 receivedValuesGY.clear();
                 end = 0;
               }
-
               List<dynamic> values = jsonData['GY'];
-              //receivedValues.addAll(values.cast<double>());
               updateReceivedValuesGY(values.cast<double>());
-
-              // Sie könnten hier eine Benachrichtigung senden, um das Diagramm zu aktualisieren
             }
+
+            // Check if the JSON data contains the 'GZ' key.
             if (jsonData.containsKey('GZ')) {
               packetCountGZ++;
               if (end == 1) {
                 receivedValuesGZ.clear();
                 end = 0;
               }
-
               List<dynamic> values = jsonData['GZ'];
-              //receivedValues.addAll(values.cast<double>());
               updateReceivedValuesGZ(values.cast<double>());
-
-              // Sie könnten hier eine Benachrichtigung senden, um das Diagramm zu aktualisieren
             }
-            if (jsonData.containsKey('END')) {
-              loadingData.value = false;
-              end = jsonData['END'];
-              receivedValues.clear();
-              //receivedValues = List<double>.filled(6 * 100, 0.0);
-              try {
-                for (int i = 0; i < receivedValuesX.length; i++) {
-                  /*  receivedValues[6 * i + 0] = receivedValuesX[i];
-                  receivedValues[6 * i + 1] = receivedValuesY[i];
-                  receivedValues[6 * i + 2] = receivedValuesZ[i];
-                  receivedValues[6 * i + 3] = receivedValuesGX[i];
-                  receivedValues[6 * i + 4] = receivedValuesGY[i];
-                  receivedValues[6 * i + 5] = receivedValuesGZ[i];*/
 
+            // Check if the JSON data contains the 'END' key.
+            if (jsonData.containsKey('END')) {
+              loadingData.value =
+                  false; // Set loading data to false as the data packet is complete.
+              end = jsonData[
+                  'END']; // Store the 'END' value, likely indicating the completion of data transmission.
+              receivedValues.clear(); // Clear the list to prepare for new data.
+
+              try {
+                // Aggregate data from all axes into a single list.
+                for (int i = 0; i < receivedValuesX.length; i++) {
                   receivedValues.add(receivedValuesX[i]);
                   receivedValues.add(receivedValuesY[i]);
                   receivedValues.add(receivedValuesZ[i]);
@@ -509,25 +490,25 @@ class BleManager {
                   receivedValues.add(receivedValuesGY[i]);
                   receivedValues.add(receivedValuesGZ[i]);
                 }
+
+                // Scale the received values for model input.
                 List<double> scaledValues = scaleData(receivedValues);
-                // Konvertiere die Daten in das erforderliche Format
-                // Beispiel: Du erwartest ein 1D-Float-Array als Eingabe
                 List<double> inputValues = receivedValues;
-                Float32List inputBuffer = Float32List.fromList(scaledValues);
+                Float32List inputBuffer = Float32List.fromList(
+                    scaledValues); // Prepare input buffer for the model.
+                Float32List outputBuffer =
+                    Float32List(4); // Output buffer to store model predictions.
 
-                //interpreter.allocateTensors();
-
-                // Bereite den Ausgabepuffer vor
-                Float32List outputBuffer = Float32List(4);
-
-                // Führe das Modell aus
-                print("Eingabegröße: ${inputBuffer.length}");
+                // Check if input buffer size is as expected (600 in this case).
                 if (inputBuffer.length == 600) {
+                  // Run the TensorFlow Lite model.
                   interpreter.run(inputBuffer.buffer.asUint8List(),
                       outputBuffer.buffer.asUint8List());
+                  // Determine the motion type with the highest probability.
                   final highestProb = outputBuffer.reduce(max);
                   final predictedIndex = outputBuffer.indexOf(highestProb);
 
+                  // Process the model's prediction.
                   if ((highestProb * 100).toInt() > 49) {
                     switch (predictedIndex) {
                       case 0:
@@ -547,10 +528,10 @@ class BleManager {
                         motionNotifierFirebase.value = "Laufen A";
                         break;
                       default:
-                        motionNotifierFirebase.value =
-                            "-"; // Default case if ki is neither 0 nor 1
+                        motionNotifierFirebase.value = "-";
                         break;
                     }
+                    // Update confidence value notifier.
                     confidenceNotifierFirebase.value =
                         (highestProb * 100).toInt();
                     confidenceFirebaseCounter++;
@@ -560,25 +541,19 @@ class BleManager {
                         (confidenceFirebaseSum / confidenceFirebaseCounter)
                             .toInt();
                   } else {
+                    // Set default values if confidence is low.
                     motionNotifierFirebase.value = "-";
                     confidenceNotifierFirebase.value =
                         100 - (highestProb * 100).toInt();
                   }
                   print(
                       "Vorhergesagter Index: $predictedIndex mit Wahrscheinlichkeit: $highestProb");
-                  // Verarbeite die Ausgabe
                 } else {
                   print(
                       "Ungültige Eingabegröße: erwartet 600, erhalten ${inputBuffer.length}");
                 }
-                // Finde die Vorhersage mit der höchsten Wahrscheinlichkeit
-
-                print(
-                    "Vorhersage: ${outputBuffer[0]} ,  ${outputBuffer[1]} ,  ${outputBuffer[2]} ,  ${outputBuffer[3]}");
-                //   print("Vorhersage: ${outputBuffer[1]}");
-                //  print("Vorhersage: ${outputBuffer[2]}");
-                //  print("Vorhersage: ${outputBuffer[3]}");
               } catch (e) {
+                // Handle any errors in data processing or model execution.
                 String errorValue = "-";
                 int errorConfidence = 0;
                 motionNotifierFirebase.value = errorValue;
