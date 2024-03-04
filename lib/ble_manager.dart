@@ -194,7 +194,7 @@ class BleManager {
   Future<void> loadAI() async {
     FirebaseCustomModel model = await FirebaseModelDownloader.instance.getModel(
         "motionai",
-        FirebaseModelDownloadType.localModel,
+        FirebaseModelDownloadType.latestModel,
         FirebaseModelDownloadConditions(
           iosAllowsCellularAccess: true,
           iosAllowsBackgroundDownloading: false,
@@ -316,7 +316,7 @@ class BleManager {
                     break;
                   case 1:
                     motionKIcounter1++;
-                    motionNotifierKI.value = "Spruch H";
+                    motionNotifierKI.value = "Sprung H";
                     break;
                   case 2:
                     motionKIcounter2++;
@@ -346,7 +346,7 @@ class BleManager {
                   break;
                 case 1:
                   motionThreadcounter1++;
-                  motionNotifierThread.value = "Spruch H";
+                  motionNotifierThread.value = "Sprung H";
                   break;
                 case 2:
                   motionThreadcounter2++;
